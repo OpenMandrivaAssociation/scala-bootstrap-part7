@@ -21,6 +21,8 @@ BuildRequires:	patch
 Checkpoint of the vxtls Scala bootstrap climb from
 v2.10.0-M3+6bb5975 through v2.10.0-M4+035224a.
 It resumes from the scala-bootstrap-part6 seed.
+The seed also keeps the v2.10.0-M4+3393624 pack jars.
+v2.10.0-M6+7050335 builds from that stage.
 This package does not provide the Scala 2.10.7 compiler.
 
 %prep
@@ -63,6 +65,8 @@ grep -qx 'v2.10.0-M4+035224a-bootstrap' %{buildroot}%{_datadir}/scala-bootstrap-
 grep -qx -- '-javabootclasspath' %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/bcp-flag
 grep -qx 1 %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/scala-boot-lib
 test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+035224a-bootstrap/build/pack/lib/scala-compiler.jar
+test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+3393624-bootstrap/build/pack/lib/scala-library.jar
+test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+3393624-bootstrap/build/pack/lib/scala-compiler.jar
 test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+035224a-bootstrap/build/java8-charbuffer-overrides.jar
 test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+035224a-bootstrap/build/java8-legacy-stubs.jar
 test -s %{buildroot}%{_datadir}/scala-bootstrap-part7/seed/stages/v2.10.0-M4+035224a-bootstrap/build/java8-filtered-stubs.jar

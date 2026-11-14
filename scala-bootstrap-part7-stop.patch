@@ -1,6 +1,6 @@
 diff -ruN old/compile.sh new/compile.sh
---- old/compile.sh	2026-11-14 18:02:17.169799883 +0100
-+++ new/compile.sh	2026-11-14 17:18:39.046385728 +0100
+--- old/compile.sh	2026-11-14 06:35:44.000000000 +0100
++++ new/compile.sh	2026-11-14 18:42:03.248993155 +0100
 @@ -30,6 +30,18 @@
  fi
  
@@ -35,8 +35,8 @@ diff -ruN old/compile.sh new/compile.sh
    grep -q '^STOP_FIRST ' "$ROOT/logs/buildit.out"
    grep -q '^OK ' "$VERIFY_LOG"
 diff -ruN old/scripts/buildit.sh new/scripts/buildit.sh
---- old/scripts/buildit.sh	2026-11-14 18:02:17.556805087 +0100
-+++ new/scripts/buildit.sh	2026-11-14 17:05:42.090706426 +0100
+--- old/scripts/buildit.sh	2026-11-14 11:24:07.000000000 +0100
++++ new/scripts/buildit.sh	2026-11-14 18:42:03.249763804 +0100
 @@ -642,6 +642,34 @@
    exit 1
  }
@@ -230,7 +230,7 @@ diff -ruN old/scripts/buildit.sh new/scripts/buildit.sh
 +fi
 diff -ruN old/scripts/check-part.sh new/scripts/check-part.sh
 --- old/scripts/check-part.sh	1970-01-01 01:00:00.000000000 +0100
-+++ new/scripts/check-part.sh	2026-11-14 17:55:59.288921131 +0100
++++ new/scripts/check-part.sh	2026-11-14 18:42:03.250118759 +0100
 @@ -0,0 +1,107 @@
 +#!/bin/bash
 +# Compile and run Hello with the checkpoint scalac installed by this RPM.
@@ -341,8 +341,8 @@ diff -ruN old/scripts/check-part.sh new/scripts/check-part.sh
 +echo "scala_bootstrap_part_ok 42"
 diff -ruN old/scripts/pack-seed.sh new/scripts/pack-seed.sh
 --- old/scripts/pack-seed.sh	1970-01-01 01:00:00.000000000 +0100
-+++ new/scripts/pack-seed.sh	2026-11-14 17:55:59.405714178 +0100
-@@ -0,0 +1,155 @@
++++ new/scripts/pack-seed.sh	2026-11-14 18:38:58.766435242 +0100
+@@ -0,0 +1,226 @@
 +#!/bin/bash
 +# Copy the jars the next climb stage opens. The stage trees stay in the
 +# build directory; the checkpoint RPM only needs these files.
@@ -413,6 +413,78 @@ diff -ruN old/scripts/pack-seed.sh new/scripts/pack-seed.sh
 +  /bin/cp -a "$abs" "$dest/stages/$rel"
 +}
 +
++
++copy_group5_stage() {
++  local name=$1
++  local dir
++  local stub
++
++  dir=$(stage_path "$name")
++  copy_path "$(absolute_path "$dir/build/pack/lib/scala-library.jar")"
++  copy_path "$(absolute_path "$dir/build/pack/lib/scala-compiler.jar")"
++  if [[ -s $dir/build/pack/lib/scala-reflect.jar ]]; then
++    copy_path "$(absolute_path "$dir/build/pack/lib/scala-reflect.jar")"
++  fi
++  if [[ -f $dir/build/pack/bin/scalac ]]; then
++    copy_path "$(absolute_path "$dir/build/pack/bin/scalac")"
++    chmod +x "$dest/stages/$name/build/pack/bin/scalac"
++  fi
++  shopt -s nullglob
++  for stub in "$dir"/build/java8-stubs*.jar; do
++    copy_path "$(absolute_path "$stub")"
++  done
++  shopt -u nullglob
++  for stub in java8-charbuffer-overrides.jar java8-legacy-stubs.jar java8-filtered-stubs.jar; do
++    if [[ -s $dir/build/$stub ]]; then
++      copy_path "$(absolute_path "$dir/build/$stub")"
++    fi
++  done
++}
++
++copy_later_predecessors() {
++  local ui=${STAGE_INDEX[$UNTIL]}
++  local branch
++  local bi
++  local dep
++  local di
++  local prev=v2.9.3-bootstrap
++  local effective
++  local deps
++  local ver
++  local -A g5deps=()
++  local -A seen=()
++
++  for branch in "${GROUP5[@]}"; do
++    effective=${GROUP5_PREV[$branch]:-$prev}
++    deps=$effective
++    ver=${GROUP5_VERSION[$branch]:-$branch}
++    if [[ -n ${FORKJOIN_NEEDED[$ver]:-} ]]; then
++      deps+=" v2.10.0-M3+8ce4787-bootstrap"
++    fi
++    g5deps["$branch"]=$deps
++    prev=$branch
++  done
++  for branch in "${GROUP5[@]}"; do
++    bi=${STAGE_INDEX[$branch]}
++    if [[ "$bi" -le "$ui" ]]; then
++      continue
++    fi
++    for dep in ${g5deps[$branch]}; do
++      di=${STAGE_INDEX[$dep]}
++      if [[ "$di" -lt "$ui" ]]; then
++        seen["$dep"]=1
++      fi
++    done
++  done
++  if [[ ${#seen[@]} -eq 0 ]]; then
++    return 0
++  fi
++  while IFS= read -r dep; do
++    copy_group5_stage "$dep"
++    echo "kept_pred $dep"
++  done < <(printf '%s\n' "${!seen[@]}" | sort)
++}
++
 +stage_dir=$(stage_path "$pred")
 +if [[ $seed_kind == group4 ]]; then
 +  copy_path "$(group4_starr_lib "$pred")"
@@ -432,12 +504,8 @@ diff -ruN old/scripts/pack-seed.sh new/scripts/pack-seed.sh
 +else
 +  # build-scala.sh reads these pack jars from the previous stage directory.
 +  # group4_starr_lib maps v2.10* onto build/quick/lib, which these stages do not write.
-+  copy_path "$(absolute_path "$stage_dir/build/pack/lib/scala-library.jar")"
-+  copy_path "$(absolute_path "$stage_dir/build/pack/lib/scala-compiler.jar")"
-+  if [[ -s $stage_dir/build/pack/lib/scala-reflect.jar ]]; then
-+    copy_path "$(absolute_path "$stage_dir/build/pack/lib/scala-reflect.jar")"
-+  fi
 +  load_forkjoin_needed
++  copy_group5_stage "$pred"
 +  if [[ -n ${FORKJOIN_NEEDED[$next]:-} ]]; then
 +    forkjoin_jar=$stage_dir/build/libs/forkjoin.jar
 +    if [[ ! -s $forkjoin_jar ]]; then
@@ -445,22 +513,25 @@ diff -ruN old/scripts/pack-seed.sh new/scripts/pack-seed.sh
 +    fi
 +    copy_path "$(absolute_path "$forkjoin_jar")"
 +  fi
++  # A later stage can name a predecessor this checkpoint does not replace.
++  copy_later_predecessors
 +fi
-+if [[ -f $stage_dir/build/pack/bin/scalac ]]; then
-+  copy_path "$(absolute_path "$stage_dir/build/pack/bin/scalac")"
-+  chmod +x "$dest/stages/$pred/build/pack/bin/scalac"
-+fi
-+shopt -s nullglob
-+for stub in "$stage_dir"/build/java8-stubs*.jar; do
-+  copy_path "$(absolute_path "$stub")"
-+done
-+shopt -u nullglob
-+# Group 5 writes these three names instead of java8-stubs.jar.
-+for stub in java8-charbuffer-overrides.jar java8-legacy-stubs.jar java8-filtered-stubs.jar; do
-+  if [[ -s $stage_dir/build/$stub ]]; then
-+    copy_path "$(absolute_path "$stage_dir/build/$stub")"
++if [[ $seed_kind == group4 ]]; then
++  if [[ -f $stage_dir/build/pack/bin/scalac ]]; then
++    copy_path "$(absolute_path "$stage_dir/build/pack/bin/scalac")"
++    chmod +x "$dest/stages/$pred/build/pack/bin/scalac"
 +  fi
-+done
++  shopt -s nullglob
++  for stub in "$stage_dir"/build/java8-stubs*.jar; do
++    copy_path "$(absolute_path "$stub")"
++  done
++  shopt -u nullglob
++  for stub in java8-charbuffer-overrides.jar java8-legacy-stubs.jar java8-filtered-stubs.jar; do
++    if [[ -s $stage_dir/build/$stub ]]; then
++      copy_path "$(absolute_path "$stage_dir/build/$stub")"
++    fi
++  done
++fi
 +
 +# The installed seed has no sources. Record the bootclasspath flag
 +# verify_stage would have chosen from this stage's sources.
