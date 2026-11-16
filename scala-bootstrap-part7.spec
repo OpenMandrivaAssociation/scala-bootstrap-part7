@@ -1,7 +1,7 @@
 Name:		scala-bootstrap-part7
 Version:	1
 Release:	1
-Summary:	Seventh checkpoint of the Scala 2.10.7 bootstrap climb
+Summary:	Second half of the seventh Scala 2.10.7 bootstrap checkpoint
 Group:		Development/Java
 License:	Apache-2.0
 URL:		https://github.com/vxtls/scala
@@ -9,7 +9,7 @@ Source0:	scala-bootstrap-2.10.7.tar.gz
 Patch0:		scala-bootstrap-part7-stop.patch
 
 BuildArch:	noarch
-BuildRequires:	scala-bootstrap-part6 = 1
+BuildRequires:	scala-bootstrap-part7a = 1
 BuildRequires:	java-1.8.0-openjdk-devel
 BuildRequires:	clang
 BuildRequires:	git-core
@@ -20,8 +20,8 @@ BuildRequires:	patch
 
 %description
 Checkpoint of the vxtls Scala bootstrap climb from
-v2.10.0-M3+6bb5975 through v2.10.0-M4+035224a.
-It resumes from the scala-bootstrap-part6 seed.
+v2.10.0-M4+277dc7c through v2.10.0-M4+035224a.
+It resumes from the scala-bootstrap-part7a seed.
 The seed also keeps the v2.10.0-M4+3393624 pack jars.
 v2.10.0-M6+7050335 builds from that stage.
 This package does not provide the Scala 2.10.7 compiler.
@@ -51,8 +51,8 @@ test "$(grep -c group4_uses_source_fjbg scripts/pack-seed.sh)" = 2
 set -eo pipefail
 export JAVA_HOME=$(ls -d %{_jvmdir}/java-1.8.0-openjdk-* | head -n 1)
 export PATH="$JAVA_HOME/bin:/usr/bin:/bin"
-export SCALA_BOOT_SEED=%{_datadir}/scala-bootstrap-part6/seed
-export SCALA_BOOT_FROM=v2.10.0-M3+6bb5975-bootstrap
+export SCALA_BOOT_SEED=%{_datadir}/scala-bootstrap-part7a/seed
+export SCALA_BOOT_FROM=v2.10.0-M4+277dc7c-bootstrap
 export SCALA_BOOT_UNTIL=v2.10.0-M4+035224a-bootstrap
 bash ./compile.sh
 
